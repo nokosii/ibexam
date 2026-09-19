@@ -1,5 +1,5 @@
 <!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>書沛 IB 衝刺表</title>
+<title>小泰福福 IB 衝刺表</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;900&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -128,7 +128,7 @@ ul.tips li{margin:4px 0}
 <div class="wrap">
   <div class="top">
     <div>
-      <h1>書沛 IB 36 分衝刺表</h1>
+      <h1>小泰福福 IB 36 分衝刺表</h1>
       <p class="sub">2026/9/20 – 2027/4/25・每天英文、經濟、化學、物理、數學都要練・平日約 2.5 小時、週末約 4 小時</p>
     </div>
     <div class="counts">
@@ -219,7 +219,7 @@ ul.tips li{margin:4px 0}
       <li>「整份考卷」的做法：Paper、Year、Season、Zone 都選好，排序用 Asc，就會依題號排出整份卷。</li>
       <li>每做完一題就按 Answer 對評分標準，錯題按 Add to 加進清單，週日重做。</li>
       <li>網站題目只能線上看、不能下載，請準備一本筆記本作答和記錯題。</li>
-      <li>本頁的勾選和備註會存到 Google 試算表，不用登入；家長和書沛在任何裝置打開都看得到最新進度。</li>
+      <li>本頁的勾選和備註會存到 Google 試算表，不用登入；家長和小泰福福在任何裝置打開都看得到最新進度。</li>
     </ul>
   </section>
 </div>
@@ -236,7 +236,7 @@ const TODAY=tpeToday();
 function dnum(s){const [y,m,d]=s.split('-').map(Number);return Date.UTC(y,m-1,d)/864e5}
 function iso(n){return new Date(n*864e5).toISOString().slice(0,10)}
 const URL_=(window.PROGRESS_URL||'').trim();
-let state={}; const LSK='shupei-ib-progress-v1';
+let state={}; const LSK='ib36-progress-v1';
 try{state=JSON.parse(localStorage.getItem(LSK)||'{}')||{}}catch(e){state={}}
 function saveLocal(){try{localStorage.setItem(LSK,JSON.stringify(state))}catch(e){}}
 function clampIdx(){let t=byDate[TODAY]; if(t!==undefined) return t; return dnum(TODAY)<dnum(PLAN[0].d)?0:PLAN.length-1}
@@ -337,7 +337,7 @@ const URL_=(window.PROGRESS_URL||'').trim();
 const NAMES={math:'數學 AA',econ:'經濟',chem:'化學',phys:'物理',eng:'英文 A',mix:'綜合'};
 const COLORS={math:'--math',econ:'--econ',chem:'--chem',phys:'--phys',eng:'--eng',mix:'--muted'};
 const $=id=>document.getElementById(id);
-let pin=''; try{pin=sessionStorage.getItem('shupei-ib-pin')||''}catch(e){}
+let pin=''; try{pin=sessionStorage.getItem('ib36-pin')||''}catch(e){}
 let tests=[];
 function q(u,p){return u+(u.includes('?')?'&':'?')+p}
 async function api(body){const r=await fetch(URL_,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});const j=await r.json();if(!j.ok)throw new Error(j.error||'失敗');return j}
@@ -350,7 +350,7 @@ function renderTests(){
   tests.forEach(t=>{
     const row=document.createElement('div'); row.className='trow';
     const wk=document.createElement('span'); wk.className='wk'; wk.textContent=(t.week||'').slice(5).replace('-','/')+' 週';
-    const ch=document.createElement('span'); ch.className='chip'; const c=COLORS[t.subject]||'--muted'; ch.style.borderColor='var('+c+')'; ch.style.color='var('+c+')'; ch.textContent=NAMES[t.subject]||'測驗';
+    const ch=document.createElement('span'); ch.className='chip'; const c=COLORS[t.subject]||'--muted'; ch.style.borderColor='var('+c+')'; ch.style.color='var('+c+')'; ch.textContent=t.answer?'答案卷':(NAMES[t.subject]||'測驗');
     const nm=document.createElement('div'); nm.className='nm'; nm.textContent=t.name; const sm=document.createElement('small'); sm.textContent='上傳 '+t.uploaded+(t.size?'・'+Math.max(1,Math.round(t.size/1024))+' KB':'')+(t.comment?'・評語：'+t.comment:''); nm.appendChild(sm);
     const acts=document.createElement('div'); acts.className='acts';
     if(t.score){const s=document.createElement('span'); s.className='sc'; s.textContent='分數 '+t.score; acts.appendChild(s)}
@@ -369,13 +369,13 @@ function renderTests(){
 }
 async function loadTests(){
   if(!URL_){renderTests();return}
-  try{const r=await fetch(q(URL_,'action=tests&t='+Date.now()));const j=await r.json();if(!j.ok)throw new Error(j.error);tests=j.tests||[];renderTests()}
+  try{let j; if(parentOn()){ j=await api({action:'tests',pin}) } else { const r=await fetch(q(URL_,'action=tests&t='+Date.now())); j=await r.json(); if(!j.ok)throw new Error(j.error) } tests=j.tests||[];renderTests()}
   catch(e){$('tests').innerHTML='<p class="hint">讀取測驗清單失敗，請稍後重新整理。</p>'}
 }
 async function download(t,btn){
   const old=btn.textContent; btn.disabled=true; btn.textContent='下載中…';
   try{
-    const r=await fetch(q(URL_,'action=file&id='+encodeURIComponent(t.id)));const j=await r.json(); if(!j.ok) throw new Error(j.error);
+    let j; if(t.answer){ j=await api({action:'file',id:t.id,pin}) } else { const r=await fetch(q(URL_,'action=file&id='+encodeURIComponent(t.id))); j=await r.json(); if(!j.ok) throw new Error(j.error) }
     const bin=atob(j.data); const u8=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);
     const url=URL.createObjectURL(new Blob([u8],{type:'application/pdf'}));
     const a=document.createElement('a'); a.href=url; a.download=j.name||t.name; document.body.appendChild(a); a.click(); a.remove();
@@ -384,9 +384,9 @@ async function download(t,btn){
   btn.disabled=false;
 }
 function showParent(){ $('pinRow').hidden=parentOn(); $('upForm').hidden=!parentOn(); $('parentBtn').textContent=parentOn()?'離開家長模式':'家長模式'; }
-$('parentBtn').onclick=()=>{ if(parentOn()){pin='';try{sessionStorage.removeItem('shupei-ib-pin')}catch(e){} $('parentBox').hidden=true;} else { $('parentBox').hidden=!$('parentBox').hidden; } showParent(); renderTests(); };
+$('parentBtn').onclick=()=>{ if(parentOn()){pin='';try{sessionStorage.removeItem('ib36-pin')}catch(e){} $('parentBox').hidden=true;} else { $('parentBox').hidden=!$('parentBox').hidden; } showParent(); loadTests(); };
 $('pinBtn').onclick=async()=>{ const v=$('pinInput').value.trim(); if(!v) return; $('upState').textContent='確認中…';
-  try{ await api({action:'checkpin',pin:v}); pin=v; try{sessionStorage.setItem('shupei-ib-pin',v)}catch(e){} $('pinInput').value=''; $('upState').textContent='已進入家長模式，可以上傳和填分數。'; showParent(); renderTests(); }
+  try{ await api({action:'checkpin',pin:v}); pin=v; try{sessionStorage.setItem('ib36-pin',v)}catch(e){} $('pinInput').value=''; $('upState').textContent='已進入家長模式，可以上傳和填分數；答案卷（a_ 開頭）只有家長模式看得到。'; showParent(); loadTests(); }
   catch(e){ $('upState').textContent=e.message } };
 $('upWeek').value=nextSat();
 $('upForm').onsubmit=async ev=>{ ev.preventDefault(); const files=[...$('upFile').files]; if(!files.length) return;

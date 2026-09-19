@@ -1,8 +1,9 @@
-// 書沛 IB 衝刺表：進度＋每週測驗 PDF（Google Apps Script）
+// 小泰福福 IB 衝刺表：進度＋每週測驗 PDF（Google Apps Script）
 // 貼到 Google 試算表的「擴充功能 → Apps Script」，部署為網頁應用程式（執行身分：我；存取權：所有人）。
+// 檔名以 a_ 開頭的 PDF 視為答案卷：只有家長模式看得到、下載得到。
 // 第一次使用：在下方 PARENT_PIN 改成你自己的家長密碼（上傳 PDF、填分數時要輸入）。
 const PARENT_PIN = '請改成家長密碼';
-const FOLDER_NAME = '書沛 IB 週測';
+const FOLDER_NAME = '小泰福福 IB 週測';
 const SHEET = 'progress';
 const COLS = ['date', 'math', 'econ', 'chem', 'phys', 'eng', 'note', 'updated'];
 const TSHEET = 'tests';
@@ -64,18 +65,20 @@ function testMeta_() {
   vals.slice(1).forEach((r, i) => { if (r[0]) map[r[0]] = { row: i + 2, name: r[1], subject: r[2], week: r[3], uploaded: r[4], score: r[5], comment: r[6] }; });
   return { sh: sh, map: map };
 }
-function listTests_() {
+function isAnswer_(name) { return /^a_/i.test(String(name)); }
+function listTests_(parent) {
   const meta = testMeta_().map;
   const files = folder_().getFiles();
   const list = [];
   while (files.hasNext()) {
     const f = files.next();
     if (f.getMimeType() !== MimeType.PDF) continue;
+    if (!parent && isAnswer_(f.getName())) continue;
     const m = meta[f.getId()] || {};
     const name = f.getName();
     const guess = (name.match(/\d{4}-\d{2}-\d{2}/) || [])[0];
     list.push({
-      id: f.getId(), name: name, size: f.getSize(),
+      id: f.getId(), name: name, size: f.getSize(), answer: isAnswer_(name),
       subject: m.subject || '', week: m.week || guess || ymd_(f.getDateCreated()),
       uploaded: m.uploaded || ymd_(f.getDateCreated()), score: m.score || '', comment: m.comment || ''
     });
@@ -83,8 +86,9 @@ function listTests_() {
   list.sort((a, b) => (b.week + b.name).localeCompare(a.week + a.name));
   return list;
 }
-function getFile_(id) {
+function getFile_(id, parent) {
   const f = DriveApp.getFileById(id);
+  if (!parent && isAnswer_(f.getName())) throw new Error('答案卷只有家長可以下載');
   const parents = f.getParents();
   const folderId = folder_().getId();
   let ok = false;
@@ -117,8 +121,8 @@ function score_(b) {
 function doGet(e) {
   try {
     const a = (e && e.parameter && e.parameter.action) || 'progress';
-    if (a === 'tests') return out_({ ok: true, tests: listTests_() });
-    if (a === 'file') return out_(Object.assign({ ok: true }, getFile_(e.parameter.id)));
+    if (a === 'tests') return out_({ ok: true, tests: listTests_(false) });
+    if (a === 'file') return out_(Object.assign({ ok: true }, getFile_(e.parameter.id, false)));
     return out_({ ok: true, data: getProgress_() });
   } catch (err) { return out_({ ok: false, error: String(err.message || err) }); }
 }
@@ -130,6 +134,8 @@ function doPost(e) {
     if (b.action === 'upload') return out_({ ok: true, id: upload_(b) });
     if (b.action === 'score') { score_(b); return out_({ ok: true }); }
     if (b.action === 'checkpin') { checkPin_(b.pin); return out_({ ok: true }); }
+    if (b.action === 'tests') { checkPin_(b.pin); return out_({ ok: true, tests: listTests_(true) }); }
+    if (b.action === 'file') { checkPin_(b.pin); return out_(Object.assign({ ok: true }, getFile_(b.id, true))); }
     saveProgress_(b.rows);
     return out_({ ok: true });
   } catch (err) {
